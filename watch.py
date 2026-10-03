@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import zipfile
+from urllib.error import HTTPError
 from datetime import datetime, timezone
 from urllib.parse import urlparse, urlencode
 from urllib.request import Request, build_opener, HTTPRedirectHandler
@@ -114,6 +115,9 @@ def run():
     token = os.environ.get('METACULUS_TOKEN')
     if not token:
         raise ValueError('Configure METACULUS_TOKEN as a repository secret')
+    token = token.strip()
+    if token.startswith('Token '):
+        token = token[6:].strip()
     base = f'repos/{target}/actions'
     recent = []
     for workflow in (MONITOR, WORKER):
@@ -166,6 +170,9 @@ if __name__ == '__main__':
     except Exception as error:
         report = {'schema': 'public-monitor-health-v1', 'checked_at_utc': now().isoformat(),
             'status': 'failed', 'error_type': type(error).__name__, 'dispatched': False}
+        if isinstance(error, HTTPError):
+            report['metaculus_http_status'] = error.code
+            report['response_format'] = 'json' if 'json' in error.headers.get('Content-Type', '') else 'non_json'
         print(json.dumps(report))
         with open('health.json', 'w', encoding='utf-8') as stream:
             json.dump(report, stream, indent=2)
