@@ -1,0 +1,51 @@
+name: FutureEval public question listener
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: futureeval-public-listener
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Poll and dispatch only due work
+        run: python watch.py
+        env:
+          TARGET_REPO: chenencc/futureeval-forecasting-agent
+          GH_TOKEN: ${{ secrets.PRIVATE_ACTIONS_TOKEN }}
+          METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }}
+          MONITOR_DISPATCH_ENABLED: ${{ vars.MONITOR_DISPATCH_ENABLED }}
+      - name: Upload public health without private payloads
+        if: always()
+        id: health
+        uses: actions/upload-artifact@v4
+        with:
+          name: listener-health
+          path: health.json
+          if-no-files-found: error
+          retention-days: 1
+      - name: Keep the last three public health records
+        if: always() && steps.health.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner,repo}=context.repo;
+            const artifacts=await github.paginate(github.rest.actions.listArtifactsForRepo,{owner,repo,per_page:100});
+            const health=artifacts.filter(a=>a.name==='listener-health'&&!a.expired)
+              .sort((a,b)=>b.id-a.id);
+            for(const artifact of health.slice(3))
+              await github.rest.actions.deleteArtifact({owner,repo,artifact_id:artifact.id});
