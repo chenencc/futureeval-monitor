@@ -3,6 +3,7 @@ import io
 import json
 import os
 import subprocess
+import time
 import zipfile
 from urllib.error import HTTPError
 from datetime import datetime, timezone
@@ -68,8 +69,19 @@ def open_ids(token, get=None):
         else:
             request = Request(url, headers={'Authorization': 'Token ' + token,
                 'Accept': 'application/json', 'User-Agent': 'FutureEval-public-monitor/1.0'})
-            with build_opener(NoRedirect()).open(request, timeout=45) as response:
-                data = json.load(response)
+            for attempt in range(3):
+                try:
+                    with build_opener(NoRedirect()).open(request, timeout=45) as response:
+                        data = json.load(response)
+                    break
+                except HTTPError as error:
+                    if error.code not in {429, 500, 502, 503, 504} or attempt == 2:
+                        raise
+                    try:
+                        delay = min(45, max(1, int(error.headers.get('Retry-After', '10'))))
+                    except ValueError:
+                        delay = 10
+                    time.sleep(delay)
         if not isinstance(data, dict):
             raise ValueError('Unexpected Metaculus response')
         rows = data.get('results', data.get('posts'))
@@ -90,7 +102,9 @@ def open_ids(token, get=None):
                 if not ident.isdecimal():
                     raise ValueError('Invalid question identity')
                 ids.add(ident)
-        url = data.get('next')
+        # Metaculus's infinite-count paginator can return next for an empty page.
+        # Empty rows prove completion; following next would create a rate-limit loop.
+        url = data.get('next') if rows else None
         if url and url.startswith('/'):
             url = 'https://www.metaculus.com' + url
     return ids
