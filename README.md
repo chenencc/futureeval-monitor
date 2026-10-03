@@ -7,8 +7,10 @@ Only `workflow_dispatch` runs this listener. There is no native Actions schedule
 ## Required configuration
 
 - Secret `METACULUS_TOKEN`: the authorized bot credential. Never print it.
-- Secret `PRIVATE_ACTIONS_TOKEN`: a fine-grained PAT scoped only to
-  `chenencc/futureeval-forecasting-agent`, with **Actions: write**.
+- Secret `PRIVATE_ACTIONS_TOKEN`: a fine-grained PAT restricted to the private
+  forecasting repository, with **Actions: write**. If reusing the same PAT for
+  cron-job.org, select only these two repositories: `futureeval-forecasting-agent`
+  and `futureeval-monitor`, with **Actions: write**.
 - Variable `MONITOR_DISPATCH_ENABLED`: `true` after a successful dry-run test.
   Missing or `false` keeps the listener read-only without private dispatches.
 
@@ -34,8 +36,9 @@ Authorization: Bearer YOUR_PUBLIC_LISTENER_TOKEN
 X-GitHub-Api-Version: 2026-03-10
 ```
 
-Replace `YOUR_PUBLIC_LISTENER_TOKEN` with a separate fine-grained PAT restricted
-to this public repository with **Actions: write**. Do not include angle brackets.
+Replace `YOUR_PUBLIC_LISTENER_TOKEN` with a fine-grained PAT that includes this
+public repository with **Actions: write**. A separate public-only PAT is optional;
+the configured two-repository PAT also works. Do not include angle brackets.
 Run every five or ten minutes. Keep the old target until the new listener's
 dry run and end-to-end dispatch have passed. A successful HTTP dispatch response
 confirms acceptance, not completion; inspect the public Actions run and health.
