@@ -2,6 +2,11 @@ name: FutureEval public question listener
 
 on:
   workflow_dispatch:
+    inputs:
+      dispatch_probe:
+        description: 'Manually verify private dispatch and checkpoint refresh'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,6 +34,7 @@ jobs:
           GH_TOKEN: ${{ secrets.PRIVATE_ACTIONS_TOKEN }}
           METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }}
           MONITOR_DISPATCH_ENABLED: ${{ vars.MONITOR_DISPATCH_ENABLED }}
+          MONITOR_DISPATCH_PROBE: ${{ inputs.dispatch_probe }}
       - name: Upload public health without private payloads
         if: always()
         id: health

@@ -40,6 +40,11 @@ Run every five or ten minutes. Keep the old target until the new listener's
 dry run and end-to-end dispatch have passed. A successful HTTP dispatch response
 confirms acceptance, not completion; inspect the public Actions run and health.
 
+For one-time cross-repository acceptance, manually run this workflow with
+`dispatch_probe=true` after enabling dispatch. It requests an ordinary private
+monitor/checkpoint refresh when idle. The input defaults to false; cron-job.org
+does not need to pass it. Active-worker suppression remains in force.
+
 ## Behavior
 
 1. Avoid dispatch while the private monitor or worker is active or just started.

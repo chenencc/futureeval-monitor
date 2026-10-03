@@ -166,6 +166,8 @@ def run():
     last = checkpoint_time or (max((date(r['created_at']) for r in recent), default=None))
     heartbeat = last is None or (now() - last).total_seconds() >= 86400
     reason = decision(ids, state, heartbeat=heartbeat)
+    if reason == 'idle' and os.environ.get('MONITOR_DISPATCH_PROBE', 'false').lower() == 'true':
+        reason = 'acceptance_checkpoint_refresh'
     dispatched = reason != 'idle'
     if dispatched:
         if os.environ.get('MONITOR_DISPATCH_ENABLED', 'false').lower() != 'true':
