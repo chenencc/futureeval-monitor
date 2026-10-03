@@ -119,9 +119,11 @@ def run():
     for workflow in (MONITOR, WORKER):
         recent.extend(gh(f'{base}/workflows/{workflow}/runs?per_page=30')['workflow_runs'])
     active = any(r['status'] != 'completed' or (now() - date(r['created_at'])).total_seconds() < 120 for r in recent)
+    ids = open_ids(token)
     if active:
         return {'schema': 'public-monitor-health-v1', 'checked_at_utc': now().isoformat(),
-            'reason': 'worker_active', 'dispatched': False}
+            'reason': 'worker_active', 'dispatched': False,
+            'open_question_count': len(ids), 'open_scan_complete': True}
     state = {'tasks': {}}
     checkpoint_time = None
     completed = sorted([r for r in recent if r.get('path') == '.github/workflows/' + WORKER
@@ -143,7 +145,6 @@ def run():
         if any(s['name'] == 'Acquire analyze and submit eligible questions' and s['conclusion'] != 'skipped'
                for job in jobs for s in job.get('steps', [])):
             raise ValueError('Latest executed worker checkpoint missing; refuse rediscovery')
-    ids = open_ids(token)
     last = checkpoint_time or (max((date(r['created_at']) for r in recent), default=None))
     heartbeat = last is None or (now() - last).total_seconds() >= 86400
     reason = decision(ids, state, heartbeat=heartbeat)
