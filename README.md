@@ -1,7 +1,7 @@
 # FutureEval public listener
 
 This repository contains a small, read-only Metaculus listener. Forecasting,
-research, budgets and submission receipts stay in the private repository.
+research, budgets and submission receipts stay in the forecasting repository.
 Only `workflow_dispatch` runs this listener. There is no native Actions schedule.
 
 ## Required configuration
@@ -13,6 +13,8 @@ Only `workflow_dispatch` runs this listener. There is no native Actions schedule
   and `futureeval-monitor`, with **Actions: write**.
 - Variable `MONITOR_DISPATCH_ENABLED`: `true` after a successful dry-run test.
   Missing or `false` keeps the listener read-only without private dispatches.
+- Variable `MINIBENCH_LISTEN_ENABLED`: `true` adds the current MiniBench round to
+  the same cron gate. Missing or `false` listens to Fall FutureEval only.
 
 The default workflow token is used only for this public repository's health
 artifacts. Private evidence and responses must not be printed or uploaded here.
@@ -59,6 +61,11 @@ does not need to pass it. Active-worker suppression remains in force.
    tasks, including interrupted submission reconciliation after closing.
 5. Refresh the private recovery checkpoint at least daily when otherwise idle.
 6. Retain only three small public health artifacts. Private errors are redacted.
+
+Fall and MiniBench use separate monitor, worker and recovery artifacts. The
+listener alternates their priority every ten minutes and dispatches at most one
+monitor per tick. Both workers share a concurrency group to serialize provider
+usage. The existing cron URL and body work for both tournaments unchanged.
 
 The private monitor still performs the complete authenticated eligibility scan.
 The existing private worker rechecks own forecasts and official rules before

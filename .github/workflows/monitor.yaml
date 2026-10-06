@@ -34,6 +34,7 @@ jobs:
           GH_TOKEN: ${{ secrets.PRIVATE_ACTIONS_TOKEN }}
           METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }}
           MONITOR_DISPATCH_ENABLED: ${{ vars.MONITOR_DISPATCH_ENABLED }}
+          MINIBENCH_LISTEN_ENABLED: ${{ vars.MINIBENCH_LISTEN_ENABLED }}
           MONITOR_DISPATCH_PROBE: ${{ inputs.dispatch_probe }}
       - name: Upload public health without private payloads
         if: always()
