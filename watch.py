@@ -10,8 +10,14 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse, urlencode
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
-TERMINAL = {'accepted', 'already_forecasted', 'closed', 'deadline_missed',
-            'blocked_integrity', 'provider_blocked', 'platform_rejected'}
+from pathlib import Path
+import importlib.util
+_policy_path=Path(__file__).resolve().parent/'recovery_policy.py'
+if not _policy_path.exists():_policy_path=Path(__file__).resolve().parents[1]/'recovery_policy.py'
+_spec=importlib.util.spec_from_file_location('official_recovery_policy',_policy_path)
+_policy=importlib.util.module_from_spec(_spec);_spec.loader.exec_module(_policy)
+TERMINAL=_policy.TERMINAL
+
 MONITOR = 'run_bot_on_tournament.yaml'
 WORKER = 'official_competition.yaml'
 
@@ -121,6 +127,8 @@ def decision(ids, state, *, active=False, heartbeat=False):
     if active:
         return 'worker_active'
     tasks = state.get('tasks', {})
+    if any(t.get('stage')=='blocked_integrity' and t.get('last_error')==_policy.LEGACY_LOOKUP_ERROR and not t.get('lookup_recovery_applied') for t in tasks.values()):
+        return 'recovery_due'
     if ids - tasks.keys():
         return 'new_questions'
     if any(t.get('stage') not in TERMINAL and
@@ -174,6 +182,7 @@ def run(*, tournament='fall-futureeval-2026', monitor=MONITOR, worker=WORKER,
     own_runs=[r for r in recent if r.get('path') in {'.github/workflows/'+monitor, '.github/workflows/'+worker}]
     last = checkpoint_time or (max((date(r['created_at']) for r in own_runs), default=None))
     heartbeat = last is None or (now() - last).total_seconds() >= 86400
+    task_health = _policy.health(state.get('tasks',{}))
     reason = decision(ids, state, heartbeat=heartbeat)
     if reason == 'idle' and os.environ.get('MONITOR_DISPATCH_PROBE', 'false').lower() == 'true':
         reason = 'acceptance_checkpoint_refresh'
@@ -185,7 +194,7 @@ def run(*, tournament='fall-futureeval-2026', monitor=MONITOR, worker=WORKER,
         else:
             gh(f'{base}/workflows/{monitor}/dispatches', 'POST', {'ref': 'main'})
     return {'schema': 'public-monitor-health-v1', 'checked_at_utc': now().isoformat(),
-        'open_question_count': len(ids), 'reason': reason, 'dispatched': dispatched,
+        'open_question_count': len(ids), 'reason': reason, **task_health, 'dispatched': dispatched,
         'open_scan_complete': True}
 
 
