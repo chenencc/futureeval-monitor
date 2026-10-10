@@ -226,6 +226,7 @@ def run_all():
                 'dispatched':dispatched,'reason':'multi_tournament',
                 'open_question_count':sum(r.get('open_question_count',0) for r in reports.values()),
                 'tournaments':reports}
+    if any(not r.get('healthy',True) for r in reports.values()):report['status']='attention_required'
     if any(r.get('status')=='failed' for r in reports.values()):report['status']='failed'
     return report
 
@@ -246,4 +247,4 @@ if __name__ == '__main__':
     with open('health.json', 'w', encoding='utf-8') as stream:
         json.dump(report, stream, indent=2)
     print(json.dumps(report))
-    if report.get('status')=='failed':raise SystemExit(1)
+    if report.get('status') in {'failed','attention_required'}:raise SystemExit(1)
