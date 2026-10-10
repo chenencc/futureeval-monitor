@@ -57,3 +57,11 @@ def health(tasks, now=None):
                 at_risk.append(task['id'])
     return {'attention_ids': sorted(attention), 'deadline_at_risk_ids': sorted(at_risk),
             'healthy': not attention and not at_risk}
+
+
+def task_timeout(task, requested, now):
+    """Reserve delivery time; do not let a process outlive the forecasting window."""
+    deadline=task.get('deadline_utc')
+    if not deadline:return requested
+    seconds=(datetime.fromisoformat(deadline.replace('Z','+00:00'))-now).total_seconds()
+    return min(requested,max(1,seconds-20))
